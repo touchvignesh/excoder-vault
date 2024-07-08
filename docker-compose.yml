@@ -1,0 +1,36 @@
+services:
+  vault:
+    image: hashicorp/vault:1.17
+    ports:
+      - 8200:8200
+    volumes:
+      - ./config.hcl:/vault/config/config.hcl
+      - ../../data/excoder-vault/vault-data:/vault/file/
+      - ../../data/excoder-vault/vault-config:/vault/config/
+      - ../../data/excoder-vault/vault-logs:/vault/logs/
+    environment:
+      - VAULT_ADDR=http://localhost:8200
+    cap_add:
+      - IPC_LOCK
+    command: server
+    restart: always
+
+  vault-init:
+    image: hashicorp/vault:1.17
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - MY_VAULT_TOKEN=${MY_VAULT_TOKEN:-test}
+    volumes:
+      - ./vault-init.sh:/usr/local/bin/vault-init.sh
+      - ../../data/excoder-vault/vault-data:/vault/file/
+      - ../../data/excoder-vault/vault-config:/vault/config/
+      - ../../data/excoder-vault/vault-logs:/vault/logs/
+    command: sh -c "chmod +x /usr/local/bin/vault-init.sh && /usr/local/bin/vault-init.sh"
+    restart: on-failure
+    depends_on:
+      vault:
+        condition: service_started
+
+networks:
+  default:
+    name: excoder_network
